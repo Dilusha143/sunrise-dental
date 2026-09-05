@@ -1,0 +1,76 @@
+@startuml ClassDiagram
+skinparam classAttributeIconSize 0
+
+class User <<Entity>> {
+  -int userId
+  -String username
+  -String passwordHash
+  -String role
+  -Integer dentistId
+  --
+  +isAdmin() : boolean
+  +isReceptionist() : boolean
+  +isDentist() : boolean
+}
+
+class Dentist <<Entity>> {
+  -int dentistId
+  -String fullName
+  -String specialization
+  --
+  +getFullName() : String
+}
+
+class DBConnectionManager <<Singleton>> {
+  -{static} DBConnectionManager instance
+  --
+  -DBConnectionManager()
+  +{static} getInstance() : DBConnectionManager
+  +getConnection() : Connection
+}
+
+class AppointmentDAO <<DAO>> {
+  +save(Appointment appt) : boolean
+  +findByNumber(String number) : Appointment
+  +updateStatus(String number, String status) : boolean
+}
+
+class Appointment <<Entity>> {
+  -String appointmentNumber
+  -String patientName
+  -String contactNumber
+  -int dentistId
+  -List<TreatmentType> treatments
+  -Date appointmentDate
+  -Time appointmentTime
+  -String status
+  --
+  +getTotalTreatmentFee() : double
+}
+
+class Bill <<Entity>> {
+  -int billId
+  -String appointmentNumber
+  -double treatmentFee
+  -double consultationFee
+  -double totalAmount
+  --
+  +getTotalAmount() : double
+}
+
+class TreatmentType <<Entity>> {
+  -int treatmentId
+  -String treatmentName
+  -double fee
+  --
+  +getFee() : double
+}
+
+User "0..1" --> "0..1" Dentist : links to
+AppointmentDAO ..> DBConnectionManager : connects via
+AppointmentDAO ..> Appointment : manages
+Appointment "0..*" --> "1" Dentist : assigned to
+Bill "0..1" --> "1" Appointment : generated for
+Appointment "1" *-- "1..*" TreatmentType : composed of
+
+@enduml
