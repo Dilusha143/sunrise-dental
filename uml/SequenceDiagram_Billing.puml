@@ -1,0 +1,93 @@
+@startuml SequenceDiagram_Billing
+
+actor Receptionist
+participant "billing.jsp\n(View)" as View
+participant "BillingServlet\n(Controller)" as Controller
+participant "AppointmentDAO" as AppointmentDAO
+participant "BillDAO" as BillDAO
+database "MySQL: sp_generate_bill()" as SP
+database "MySQL: bills" as BillsDB
+
+== Step 1: Preview (GET) - does NOT record a bill ==
+
+Receptionist -> View : enter appointment number
+View -> Controller : GET /billing?appointmentNumber=...
+activate Controller
+
+Controller -> Controller : check session & role\n(Receptionist/Admin only, else 403)
+Controller -> AppointmentDAO : findByNumber(number)
+AppointmentDAO --> Controller : Appointment or null
+
+alt not found
+  Controller --> View : forward with "no appointment found"
+  View --> Receptionist : show error
+else found and CANCELLED
+  Controller -> BillDAO : generateBill(number)
+  activate BillDAO
+  BillDAO -> SP : CALL sp_generate_bill(number, ...)
+  SP --> BillDAO : all OUT params NULL
+  BillDAO --> Controller : null
+  deactivate BillDAO
+  Controller --> View : forward with error\n"appointment was cancelled - no bill can be generated"
+  View --> Receptionist : show error, no bill rendered, nothing saved
+else found and SCHEDULED or COMPLETED
+  Controller -> BillDAO : generateBill(number)
+  activate BillDAO
+  BillDAO -> SP : CALL sp_generate_bill(number, ...)
+  note right of SP
+    Procedure applies the status rule:
+    SCHEDULED -> consultation fee only
+    COMPLETED -> + fn_appointment_treatment_total()
+  end note
+  SP --> BillDAO : treatment_fee, consultation_fee, total_amount
+  BillDAO --> Controller : Bill (preview only - not yet saved)
+  deactivate BillDAO
+  Controller --> View : forward with appointment + preview bill\n(justRecorded = false)
+  View --> Receptionist : display preview, with\n"Print Receipt" button to confirm
+end
+
+deactivate Controller
+
+== Step 2: Print Receipt (POST) - only now is the bill recorded ==
+
+Receptionist -> View : click "Print Receipt"
+View -> Controller : POST /billing (appointmentNumber)
+activate Controller
+
+Controller -> Controller : check session & role again
+Controller -> AppointmentDAO : findByNumber(number)
+AppointmentDAO --> Controller : Appointment
+
+Controller -> BillDAO : generateBill(number)
+activate BillDAO
+note right of Controller
+  Recalculated fresh from the database
+  rather than trusting any amount the
+  client submitted, in case the
+  appointment's status changed between
+  the preview and the print click.
+end note
+BillDAO -> SP : CALL sp_generate_bill(number, ...)
+SP --> BillDAO : treatment_fee, consultation_fee, total_amount
+BillDAO --> Controller : Bill
+deactivate BillDAO
+
+Controller -> BillDAO : save(bill)
+activate BillDAO
+BillDAO -> BillsDB : INSERT INTO bills (...)
+note right of BillsDB
+  Only this INSERT (triggered by Print
+  Receipt) causes the bill to appear in
+  the Revenue Summary report (Section 3.5) -
+  generating a preview alone never does.
+end note
+BillsDB --> BillDAO : rows affected
+BillDAO --> Controller
+deactivate BillDAO
+
+Controller --> View : forward with appointment + bill\n(justRecorded = true)
+View --> Receptionist : show "recorded" confirmation,\nauto-trigger window.print()
+
+deactivate Controller
+
+@enduml
