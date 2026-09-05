@@ -1,0 +1,56 @@
+@startuml SequenceDiagram_RegisterAppointment
+
+actor Receptionist
+participant "register-appointment.jsp\n(View)" as View
+participant "RegisterAppointmentServlet\n(Controller)" as Controller
+participant "DentistDAO" as DentistDAO
+participant "TreatmentDAO" as TreatmentDAO
+participant "ValidationUtil" as ValidationUtil
+participant "AppointmentNumberGenerator" as NumGen
+participant "AppointmentDAO" as AppointmentDAO
+participant "DBConnectionManager\n<<Singleton>>" as DBManager
+database "MySQL: appointments" as DB
+
+Receptionist -> View : GET /register-appointment
+View -> Controller
+
+Controller -> DentistDAO : findAll()
+DentistDAO --> Controller : current dentist roster
+Controller -> TreatmentDAO : findAll()
+TreatmentDAO --> Controller : treatment options
+Controller --> View : forward with dentistOptions + treatmentOptions
+View --> Receptionist : show form (dropdowns always reflect\ncurrent roster/treatments, never hard-coded)
+
+Receptionist -> View : fill in patient & appointment form
+View -> Controller : POST /register-appointment
+
+Controller -> ValidationUtil : isValidName(), isValidPhone(), isNotEmpty()
+activate ValidationUtil
+ValidationUtil --> Controller : validation result
+deactivate ValidationUtil
+
+alt validation fails
+  Controller --> View : forward with error message
+  View --> Receptionist : show validation error
+else validation passes
+  Controller -> NumGen : generate()
+  NumGen --> Controller : e.g. "APT1A2B3C4D" (APT + 8 hex chars)
+
+  Controller -> AppointmentDAO : save(appointment)
+  activate AppointmentDAO
+  AppointmentDAO -> DBManager : getInstance().getConnection()
+  activate DBManager
+  DBManager --> AppointmentDAO : Connection
+  deactivate DBManager
+  AppointmentDAO -> DB : INSERT INTO appointments (..., status='SCHEDULED')
+  activate DB
+  DB --> AppointmentDAO : rows affected
+  deactivate DB
+  AppointmentDAO --> Controller : true (saved)
+  deactivate AppointmentDAO
+
+  Controller --> View : forward with success + appointment number
+  View --> Receptionist : show confirmation
+end
+
+@enduml
