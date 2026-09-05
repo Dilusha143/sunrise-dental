@@ -1,0 +1,38 @@
+@startuml SequenceDiagram_UpdateAppointmentStatus
+
+actor "Dentist / Receptionist" as User
+participant "appointments-list.jsp\n(View)" as View
+participant "UpdateAppointmentStatusServlet\n(Controller)" as Controller
+participant "AppointmentDAO" as AppointmentDAO
+database "MySQL: appointments" as DB
+
+User -> View : click Complete or Cancel on a\nSCHEDULED row
+View -> Controller : POST /update-appointment-status\n(appointmentNumber, newStatus)
+activate Controller
+
+Controller -> Controller : check session (redirect to /login if none)
+
+Controller -> AppointmentDAO : findByNumber(appointmentNumber)
+activate AppointmentDAO
+AppointmentDAO --> Controller : Appointment (current dentistId, status)
+deactivate AppointmentDAO
+
+alt requester is a pure RECEPTIONIST and newStatus = COMPLETED
+  Controller --> View : 403 Forbidden\n(only a dentist may complete)
+else requester is a pure DENTIST but not linked to this appointment's dentistId
+  Controller --> View : 403 Forbidden\n(dentists may only act on their own appointments)
+else authorised
+  Controller -> AppointmentDAO : updateStatus(appointmentNumber, newStatus)
+  activate AppointmentDAO
+  AppointmentDAO -> DB : UPDATE appointments SET status = ?\nWHERE appointment_number = ?\nAND status = 'SCHEDULED'
+  DB --> AppointmentDAO : rows affected (0 if already resolved)
+  AppointmentDAO --> Controller : true/false
+  deactivate AppointmentDAO
+
+  Controller --> View : redirect to /appointments
+  View --> User : row now shows COMPLETED or CANCELLED,\naction buttons removed
+end
+
+deactivate Controller
+
+@enduml
