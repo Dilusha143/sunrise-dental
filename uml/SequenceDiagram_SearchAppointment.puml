@@ -1,0 +1,45 @@
+@startuml SequenceDiagram_SearchAppointment
+
+actor Staff
+participant "search-appointment.jsp\n(View)" as View
+participant "SearchAppointmentServlet\n(Controller)" as Controller
+participant "ValidationUtil" as ValidationUtil
+participant "AppointmentDAO" as AppointmentDAO
+participant "DBConnectionManager\n<<Singleton>>" as DBManager
+database "MySQL: appointments" as DB
+
+Staff -> View : enter appointment number
+View -> Controller : GET /search-appointment?appointmentNumber=...
+activate Controller
+
+Controller -> Controller : check session (redirect to /login if none)
+
+Controller -> ValidationUtil : isValidAppointmentNumber(number)
+activate ValidationUtil
+ValidationUtil --> Controller : validation result\n(accepts APT + hex chars 0-9/A-F)
+deactivate ValidationUtil
+
+alt invalid format
+  Controller --> View : forward with format error
+  View --> Staff : show "invalid format" message
+else valid format
+  Controller -> AppointmentDAO : findByNumber(number)
+  activate AppointmentDAO
+  AppointmentDAO -> DBManager : getInstance().getConnection()
+  AppointmentDAO -> DB : SELECT ... JOIN dentists, appointment_treatments,\ntreatment_types WHERE appointment_number = ?
+  DB --> AppointmentDAO : matching row (or none)
+  AppointmentDAO --> Controller : Appointment or null
+  deactivate AppointmentDAO
+
+  alt not found
+    Controller --> View : forward with "no appointment found"
+    View --> Staff : show not-found message
+  else found
+    Controller --> View : forward with appointment details
+    View --> Staff : display full appointment/patient info\n(incl. current status)
+  end
+end
+
+deactivate Controller
+
+@enduml
