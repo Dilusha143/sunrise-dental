@@ -1,0 +1,86 @@
+@startuml ERDiagram
+skinparam linetype ortho
+
+entity "User" as user {
+  * User ID (PK)
+  --
+  Username
+  Full Name
+  Email
+  Password
+  Role
+  Status
+}
+
+entity "Role" as role {
+  * Role ID (PK)
+  --
+  Role Name
+  Description
+}
+
+entity "Patient" as patient {
+  * Patient ID (PK)
+  --
+  Full Name
+  Last Name
+  Phone
+  Address
+  Created_at
+  Gender
+  Date of Birth
+}
+
+entity "Dentist" as dentist {
+  * Dentist ID (PK)
+  --
+  Full Name
+  Specialization
+  Phone
+  Email
+  Status
+}
+
+entity "Appointment" as appointment {
+  * Appointment ID (PK)
+  --
+  Patient ID (FK)
+  Dentist ID (FK)
+  Status
+  Treatment
+  Appointment Date
+  Appointment Time
+}
+
+entity "Bill" as bill {
+  * Bill ID (PK)
+  --
+  Appointment ID (FK)
+  Patient ID (FK)
+  Dentist ID (FK)
+  Total Amount
+  Treatment Charges
+  Discount
+  Balance
+  Amount Paid
+  Status
+}
+
+entity "Payment" as payment {
+  * Payment ID (PK)
+  --
+  Bill ID (FK)
+  Received ID (FK)
+  Payment Date
+  Payment Method
+  Amount
+}
+
+user  ||--||  role        : has
+user  ||--o{  dentist     : manages
+patient ||--o{ appointment : book
+dentist ||--o{ appointment : "assigned to"
+appointment ||--|| bill    : generates
+bill  ||--o{  payment      : has
+
+@enduml
