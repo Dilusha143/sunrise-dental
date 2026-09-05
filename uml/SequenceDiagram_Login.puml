@@ -1,0 +1,39 @@
+@startuml SequenceDiagram_Login
+
+actor Staff
+participant "login.jsp\n(View)" as View
+participant "LoginServlet\n(Controller)" as Controller
+participant "UserDAO" as UserDAO
+participant "PasswordUtil" as PasswordUtil
+participant "DBConnectionManager\n<<Singleton>>" as DBManager
+database "MySQL: users" as DB
+
+Staff -> View : enter username & password
+View -> Controller : POST /login
+activate Controller
+
+Controller -> UserDAO : authenticate(username, password)
+activate UserDAO
+
+UserDAO -> DBManager : getInstance().getConnection()
+UserDAO -> DB : SELECT u.*, d.specialization\nFROM users u LEFT JOIN dentists d\nWHERE u.username = ?
+DB --> UserDAO : stored password_hash (+ linked dentist, if any)
+
+UserDAO -> PasswordUtil : hash(suppliedPassword)
+PasswordUtil --> UserDAO : suppliedHash
+
+UserDAO -> UserDAO : compare storedHash == suppliedHash
+
+alt match found
+  UserDAO --> Controller : User object (includes dentistId if DENTIST role is linked)
+  Controller -> Controller : create HttpSession, set attribute "user"
+  Controller --> View : redirect to dashboard.jsp
+else no match
+  UserDAO --> Controller : null
+  Controller --> View : forward with error message
+end
+
+deactivate UserDAO
+deactivate Controller
+
+@enduml
