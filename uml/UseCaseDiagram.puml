@@ -1,0 +1,64 @@
+@startuml UseCaseDiagram
+left to right direction
+skinparam packageStyle rectangle
+
+actor Admin
+actor Dentist
+actor Receptionist
+
+Admin --|> Receptionist
+Admin --|> Dentist
+
+rectangle "Sunrise Dental Clinic System" {
+  usecase "Add Dentist To Roster" as UC1
+  usecase "Register New Appointment" as UC2
+  usecase "Register Staff Login" as UC3
+  usecase "Generate Report" as UC4
+  usecase "Generate Unique ID" as UC2a
+  usecase "Validate Patient Details" as UC2b
+  usecase "Check Double-Booking" as UC2c
+  usecase "Calculate & Print Bill" as UC5
+  usecase "Login / Authentication" as UC6
+  usecase "View Appointments List" as UC7
+  usecase "View Help Section" as UC8
+  usecase "Exit System / Logout" as UC9
+  usecase "Search View Appointment" as UC10
+  usecase "Update Appointment Status\n(Complete / Cancel)" as UC11
+}
+
+Admin --> UC1
+Admin --> UC2
+Admin --> UC3
+Admin --> UC4
+
+Receptionist --> UC2
+Receptionist --> UC5
+Receptionist --> UC6
+Receptionist --> UC7
+Receptionist --> UC8
+Receptionist --> UC9
+Receptionist --> UC10
+Receptionist --> UC11
+
+Dentist --> UC5
+Dentist --> UC6
+Dentist --> UC7
+Dentist --> UC8
+Dentist --> UC9
+Dentist --> UC10
+Dentist --> UC11
+
+UC2 ..> UC2a : <<include>>
+UC2 ..> UC2b : <<include>>
+UC2 ..> UC2c : <<include>>
+UC11 ..> UC10 : <<include>>
+UC5 ..> UC10 : <<extend>>
+
+note bottom of UC11
+  Assumption: "depend on status" label near this use case
+  in the original sketch was ambiguous (unclear source/
+  target), so it is not encoded as a formal relationship
+  here. Confirm intent before finalizing.
+end note
+
+@enduml
