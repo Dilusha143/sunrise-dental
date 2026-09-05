@@ -1,0 +1,54 @@
+@startuml SystemArchitectureDiagram
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam wrapWidth 250
+
+package "1. CLIENT TIER (INTERNAL & EXTERNAL)" as Tier1 {
+  component "Admin / Receptionist / Dentist\n(Web Browser)" as Client1
+  component "External Systems / Mobile Apps\n(HTTP - REST Consumers)" as Client2
+}
+
+package "2. APPLICATION SERVER (Apache Tomcat / Jakarta)" as Tier2 {
+  package "Presentation View (JSP & CSS)" as ViewLayer {
+    component "JSP Pages\n- login.jsp - dashboard.jsp\n- register-appointment.jsp\n- appointments-list.jsp\n- billing.jsp - search.jsp\n- error.jsp" as JSP
+  }
+  package "Controller & API Layer" as ControllerLayer {
+    component "MVC Servlets\n- LoginServlet - LogoutServlet\n- RegisterAppointmentServlet\n- AppointmentsListServlet\n- UpdateAppointmentStatusServlet\n- TreatmentTypeServlet\n- RegisterBillServlet\n- AddDentistServlet" as Servlets
+    component "JAX-RS / Jersey REST API\n(Jakarta)\n- AppointmentResource\n- BillResource" as REST
+  }
+}
+
+package "3. BUSINESS LOGIC & DOMAIN" as Tier3 {
+  component "Security & Business Utilities\n- PasswordUtil (SHA-256)\n- ValidationUtil (Input Rules)\n- AppointmentNumberGenerator\n- Role/Access Control Rules" as Utils
+  component "Domain Models & DTOs\n- User - Dentist - Appointment\n- TreatmentType - Bill\n- AppointmentDTO - BillDTO" as Domain
+}
+
+package "4. DATA ACCESS (DAO) LAYER" as Tier4 {
+  component "Data Access Objects (DAOs)\n- UserDAO - DentistDAO\n- AppointmentDAO - TreatmentDAO\n- BillDAO - ReportDAO" as DAOs
+  component "Database Connection Manager\n- DBConnectionManager\n  (Singleton Pattern)\n- JDBC Driver Interface" as DBManager
+}
+
+package "5. DATABASE STORAGE (MYSQL)" as Tier5 {
+  database "MySQL Database: sunrise_dental\n- users - dentists - appointments\n- treatment_types - appointment_treatments\n- bills" as MySQLDB
+  component "Database Stored Logic & Triggers\n- Triggers:\n  fn_prevent_double_booking\n- Procedures: sp_generate_bill\n- Functions: ..." as StoredLogic
+}
+
+Client1 -down-> JSP : HTTP GET / POST
+Client2 -down-> REST : JSON over HTTP REST
+
+JSP -down-> Servlets : Form Submission / AJAX
+
+Servlets -down-> Utils : Process Requests / Validate
+Servlets -down-> Domain : Populate & Query
+Servlets -down-> DAOs : Transform DTOs
+REST -down-> DAOs : Transform DTOs
+REST -down-> DAOs : Fetch / Persist Data
+
+Domain -down-> DAOs : Uses Entities
+
+DAOs -down-> DBManager : Request Connection
+DBManager -down-> MySQLDB : JDBC Queries & Transactions
+
+MySQLDB -down-> StoredLogic
+
+@enduml
